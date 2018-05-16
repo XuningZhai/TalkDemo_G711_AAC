@@ -8,6 +8,7 @@
 
 #import "CaptureG711.h"
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 
 #define QUEUE_BUFFER_SIZE 3      //输出音频队列缓冲个数
 #define kDefaultBufferDurationSeconds 0.06      //调整这个值使得录音的缓冲区大小为960,实际会小于或等于960,需要处理小于960的情况
@@ -29,7 +30,8 @@ static BOOL isRecording = NO;
 {
     self = [super init];
     if (self) {
-        //重置下
+        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+        [[AVAudioSession sharedInstance] setActive:YES error:nil];
         memset(&_recordFormat, 0, sizeof(_recordFormat));
         _recordFormat.mSampleRate = kDefaultSampleRate;
         _recordFormat.mChannelsPerFrame = 1;

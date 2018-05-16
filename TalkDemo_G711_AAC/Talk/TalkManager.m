@@ -18,7 +18,6 @@
 
 #define SAMPLE_RATE 16000
 #define BIT_RATE SAMPLE_RATE*16
-#define FILENAME @"12345.pcm"
 
 @interface TalkManager ()<GCDAsyncSocketDelegate,CaptureAACDelegate,AACSendDelegate,CaptureG711Delegate>
 @property (nonatomic,retain) GCDAsyncSocket *socket;
@@ -31,6 +30,8 @@
 @end
 
 @implementation TalkManager
+
+static enum _e_g711_tp tp_type;
 
 + (instancetype)manager {
     return [[[self class] alloc] init];
@@ -51,6 +52,12 @@
         _aqplayer = [[AQPlayer alloc] initWithSampleRate:SAMPLE_RATE*2];
     }
     else {
+        if (_type==G711A) {
+            tp_type = TP_ALAW;
+        }
+        else if (_type==G711U) {
+            tp_type = TP_ULAW;
+        }
         [self startCaptureG711];
         _g711 = [[EncoderG711 alloc] init];
         _aqplayer = [[AQPlayer alloc] initWithSampleRate:SAMPLE_RATE/2];
@@ -329,11 +336,27 @@ char *newRTSPInterleavedFrameG711(int packetLength) {
     return packet;
 }
 
+#define G711LENGTH 520
+#define HEAGERLENGTH 4+12+24
 - (void)getPayloadG711:(NSData *)data {
-    NSMutableData *payload = [NSMutableData dataWithData:data];
-    if (data.length>40) {
-        [payload replaceBytesInRange:NSMakeRange(0, 40) withBytes:NULL length:0];//4+12+24
-        [self decoderG711:payload];
+    if (data.length>G711LENGTH&&data.length%G711LENGTH==0) {
+        NSMutableData *d = [NSMutableData dataWithData:data];
+        for (int i = 0; i < data.length/G711LENGTH; i++) {
+            NSData *data1 = [d subdataWithRange:NSMakeRange(0, G711LENGTH)];
+            NSMutableData *payload = [NSMutableData dataWithData:data1];
+            if (data1.length>HEAGERLENGTH) {
+                [payload replaceBytesInRange:NSMakeRange(0, HEAGERLENGTH) withBytes:NULL length:0];
+                [self decoderG711:payload];
+            }
+            [d replaceBytesInRange:NSMakeRange(0, G711LENGTH) withBytes:NULL length:0];
+        }
+    }
+    else {
+        NSMutableData *payload = [NSMutableData dataWithData:data];
+        if (data.length>HEAGERLENGTH) {
+            [payload replaceBytesInRange:NSMakeRange(0, HEAGERLENGTH) withBytes:NULL length:0];
+            [self decoderG711:payload];
+        }
     }
 }
 
@@ -344,7 +367,7 @@ char *newRTSPInterleavedFrameG711(int packetLength) {
     short *g711Buf = (short *)byteData;
     int outlen = inlen * 2;
     Byte *pcmBuf = (Byte *)malloc(outlen);
-    g711_decode(pcmBuf, &outlen, g711Buf, inlen, TP_ALAW);
+    g711_decode(pcmBuf, &outlen, g711Buf, inlen, tp_type);
     NSData *pcm = [[NSData alloc] initWithBytes:pcmBuf length:outlen];
     free(pcmBuf);
     [_aqplayer playWithData:pcm];

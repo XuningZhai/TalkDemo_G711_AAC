@@ -18,13 +18,10 @@
 @property (nonatomic, strong) UITextField *tf2;
 @end
 
-//#define HOST_IP _tf1.text  // ip
-//#define HOST_PORT [_tf2.text intValue]   // port
-///*定义rtsp url*/
-//#define RTSP_ADDRESS [NSString stringWithFormat:@"rtsp://%@:%@/hzcms_talk?token=1",_tf1.text,_tf2.text]   // rtsp url
-#define HOST_IP @"172.17.2.85"
-#define HOST_PORT 554
-#define RTSP_ADDRESS @"rtsp://172.17.2.85:554/hzcms_talk?token=1"
+#define HOST_IP _tf1.text  // ip
+#define HOST_PORT [_tf2.text intValue]   // port
+/*定义rtsp url*/
+#define RTSP_ADDRESS [NSString stringWithFormat:@"rtsp://%@:%@/hzcms_talk?token=1",_tf1.text,_tf2.text]   // rtsp url
 
 @implementation ViewController
 

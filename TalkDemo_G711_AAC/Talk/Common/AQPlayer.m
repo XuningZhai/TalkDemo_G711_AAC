@@ -66,44 +66,46 @@
 }
 
 - (void)playWithData:(NSData *)data {
-    [sysnLock lock];
-    tempData = [NSMutableData new];
-    [tempData appendData:data];
-    NSUInteger len = tempData.length;
-    Byte *bytes = (Byte *)malloc(len);
-    [tempData getBytes:bytes length:len];
-    int i = 0;
-    //判断buffer是否被使用
-    while (true) {
-        if (!audioQueueBufferUsed[i]) {
-            audioQueueBufferUsed[i] = true;
-            break;
-        }else {
-            i++;
-            if (i >= QUEUE_BUFFER_SIZE) {
-                i = 0;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [self->sysnLock lock];
+        self->tempData = [NSMutableData new];
+        [self->tempData appendData:data];
+        NSUInteger len = self->tempData.length;
+        Byte *bytes = (Byte *)malloc(len);
+        [self->tempData getBytes:bytes length:len];
+        int i = 0;
+        //判断buffer是否被使用
+        while (true) {
+            usleep(1000);//防止cpu过高
+            if (!self->audioQueueBufferUsed[i]) {
+                self->audioQueueBufferUsed[i] = true;
+                break;
+            }else {
+                i++;
+                if (i >= QUEUE_BUFFER_SIZE) {
+                    i = 0;
+                }
             }
         }
-    }
-    if (str.length < 3) {
-        [str appendString:[NSString stringWithFormat:@"%d",i]];
-    }
-    else if (str.length == 3) {
-        [str deleteCharactersInRange:NSMakeRange(0, 1)];
-        [str appendString:[NSString stringWithFormat:@"%d",i]];
-    }
-    if ([str isEqualToString:@"000"]) {
-        //reset
-//        NSLog(@"reset==============================");
-        [self resetPlay];
-    }
-    //向buffer填充数据
-    audioQueueBuffers[i]->mAudioDataByteSize = (unsigned int)len;
-    memcpy(audioQueueBuffers[i]->mAudioData, bytes, len);
-    free(bytes);
-    //将buffer插入队列
-    AudioQueueEnqueueBuffer(audioQueue, audioQueueBuffers[i], 0, NULL);
-    [sysnLock unlock];
+        if (self->str.length < 3) {
+            [self->str appendString:[NSString stringWithFormat:@"%d",i]];
+        }
+        else if (self->str.length == 3) {
+            [self->str deleteCharactersInRange:NSMakeRange(0, 1)];
+            [self->str appendString:[NSString stringWithFormat:@"%d",i]];
+        }
+        if ([self->str isEqualToString:@"000"]) {
+            //reset
+            [self resetPlay];
+        }
+        //向buffer填充数据
+        self->audioQueueBuffers[i]->mAudioDataByteSize = (unsigned int)len;
+        memcpy(self->audioQueueBuffers[i]->mAudioData, bytes, len);
+        free(bytes);
+        //将buffer插入队列
+        AudioQueueEnqueueBuffer(self->audioQueue, self->audioQueueBuffers[i], 0, NULL);
+        [self->sysnLock unlock];
+    });
 }
 
 //回调
